@@ -1,27 +1,77 @@
+import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '../lib/fetcher';
+import styles from '../styles/Home.module.css';
+
+function Converte(date) {
+  return date.replace(/-/g, '');
+}
 
 export default function Home() {
-  const { data, error, isLoading } = useSWR(
-    'https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL?token=927c456f9a4bec44887e5cc0e2d154c8f843f33855ec2ec0d15db596ee7d19cd',
-    fetcher,
-    { refreshInterval: 5000 } // Atualiza a cada 60s //1000 == 1 segundo refresh page
-  );
+  const [dataInicial, setDataInicial] = useState('');
+  const [dataFinal, setDataFinal] = useState('');
+  const [url, setUrl] = useState(null);
 
-  if (error) return <div>Erro ao carregar dados.</div>;
-  if (isLoading || !data) return <div>Carregando...</div>;
+  const { data, error, isLoading } = useSWR(url, fetcher);
 
-  const usdbrl = data.USDBRL;
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (dataInicial && dataFinal) {
+      const start = Converte(dataInicial);
+      const end = Converte(dataFinal);
+
+      setUrl(
+        `https://economia.awesomeapi.com.br/json/daily/USD-BRL/?start_date=${start}&end_date=${end}`
+      );
+    }
+  };
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'Arial' }}>
-      <h1>Cotação Dólar Hoje (USD/BRL)</h1>
-      <p><strong>Compra:</strong> R$ {usdbrl.bid}</p>
-      <p><strong>Venda:</strong> R$ {usdbrl.ask}</p>
-      <p><strong>Alta:</strong> R$ {usdbrl.high}</p>
-      <p><strong>Baixa:</strong> R$ {usdbrl.low}</p>
-      <p><strong>Variação:</strong> {usdbrl.varBid} ({usdbrl.pctChange}%)</p>
-      <small>Atualizado: {new Date(Number(usdbrl.timestamp) * 1000).toLocaleString()}</small>
+    <main style={{ fontFamily: 'Arial' }}>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <h1 style={{ marginBottom: 30, marginTop: -10, marginLeft: 10, color: '#112A46' }}>
+          COTAÇÃO DE MOEDAS
+        </h1>
+
+        <h2 style={{ marginTop: 8, marginBottom: -10, color: '#112A46' }}>Data Inicial</h2>
+        <input
+          type="date"
+          value={dataInicial}
+          className={styles.input}
+          onChange={(e) => setDataInicial(e.target.value)}
+        />
+
+        <h2 style={{ marginTop: 25, marginBottom: -10, color: '#112A46' }}>Data Final</h2>
+        <input
+          type="date"
+          value={dataFinal}
+          className={styles.input}
+          onChange={(e) => setDataFinal(e.target.value)}
+        />
+
+        <button type="submit" className={styles.button}>Buscar</button>
+      </form>
+
+      <h1 style={{ marginLeft: 380, marginTop: 100 }}>A Cotação aparecerá aqui</h1>
+
+      <div className={styles.div}>
+        {isLoading && <p>Carregando ...</p>}
+        {error && <p>Erro ao carregar os dados.</p>}
+        {data && Array.isArray(data) && (
+          <ul>
+            {data.map((cotacao) => (
+              <li key={cotacao.timestamp} style={{ marginBottom: '1rem' }}>
+                <strong>Data:</strong> {new Date(Number(cotacao.timestamp) * 1000).toLocaleDateString()}<br />
+                <strong>Compra:</strong> R$ {cotacao.bid}<br />
+                <strong>Venda:</strong> R$ {cotacao.ask}<br />
+                <strong>Alta:</strong> R$ {cotacao.high}<br />
+                <strong>Baixa:</strong> R$ {cotacao.low}<br />
+                <strong>Variação:</strong> {cotacao.varBid} ({cotacao.pctChange}%)
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </main>
   );
 }
